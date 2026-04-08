@@ -16,6 +16,19 @@ A containerized `rclone` worker that checks Google Drive every hour for new Goog
    - S3 remote, for example `s3:`
 2. A destination S3 bucket path.
 
+
+## Sample configuration files
+
+- `rclone.conf.example`: sample remotes for Google Drive (`gdrive`) and OVHcloud Object Storage in Frankfurt (`ovh-s3-fra`).
+- `docker-compose.yml`: ready-to-run compose service mounting your real `./rclone.conf` and running as a non-root UID/GID (`1000:1000`).
+
+To use:
+
+1. Copy `rclone.conf.example` to `rclone.conf`.
+2. Fill in your real Google OAuth token and OVHcloud S3 credentials.
+3. Update `RCLONE_S3_REMOTE` bucket/path if needed.
+4. Start with `docker compose up -d --build`.
+
 ## Build locally
 
 ```bash
@@ -26,6 +39,7 @@ docker build -t gphotos-takeout:local .
 
 ```bash
 docker run -d --name gphotos-takeout \
+  --user 1000:1000 \
   -v $(pwd)/rclone.conf:/config/rclone/rclone.conf:ro \
   -e RCLONE_DRIVE_REMOTE="gdrive:Takeout" \
   -e RCLONE_S3_REMOTE="s3:google-photos-archive" \

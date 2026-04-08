@@ -1,0 +1,18 @@
+[gdrive]
+type = drive
+scope = drive.readonly
+# Obtain credentials from Google Cloud Console.
+client_id = YOUR_GOOGLE_CLIENT_ID
+client_secret = YOUR_GOOGLE_CLIENT_SECRET
+# Run `rclone config` locally once to complete OAuth and then copy token here.
+token = {"access_token":"REPLACE_ME","token_type":"Bearer","refresh_token":"REPLACE_ME","expiry":"2026-01-01T00:00:00Z"}
+
+[ovh-s3-fra]
+type = s3
+provider = Other
+env_auth = false
+access_key_id = YOUR_OVH_ACCESS_KEY
+secret_access_key = YOUR_OVH_SECRET_KEY
+region = eu-west-par
+endpoint = s3.eu-west-par.io.cloud.ovh.net
+acl = private
