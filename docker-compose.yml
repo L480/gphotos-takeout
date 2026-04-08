@@ -2,13 +2,12 @@ services:
   gphotos-takeout:
     build:
       context: .
-    image: gphotos-takeout:local
+    image: ghcr.io/L480/gphotos-takeout:latest
     user: "1000:1000"
     restart: unless-stopped
     environment:
       RCLONE_DRIVE_REMOTE: gdrive:Takeout
-      RCLONE_S3_REMOTE: ovh-s3-fra:my-ovh-bucket/google-photos-archive
-      SCAN_INTERVAL_SECONDS: "3600"
+      RCLONE_S3_REMOTE: ovh-s3-de:my-bucket
       RCLONE_TRANSFERS: "2"
       RCLONE_CHECKERS: "4"
       RCLONE_LOG_LEVEL: INFO

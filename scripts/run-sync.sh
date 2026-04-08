@@ -3,18 +3,17 @@ set -eu
 
 # Required environment variables:
 # - RCLONE_DRIVE_REMOTE (example: gdrive:Takeout)
-# - RCLONE_S3_REMOTE (example: s3:google-photos-takeout)
+# - RCLONE_S3_REMOTE (example: ovh-s3-de:my-bucket)
 # Optional:
-# - SCAN_INTERVAL_SECONDS (default: 3600)
 # - RCLONE_TRANSFERS (default: 2)
 # - RCLONE_CHECKERS (default: 4)
 # - RCLONE_LOG_LEVEL (default: INFO)
 # - RCLONE_ADDITIONAL_ARGS (extra flags passed to rclone)
 
 : "${RCLONE_DRIVE_REMOTE:?RCLONE_DRIVE_REMOTE is required, e.g. gdrive:Takeout}"
-: "${RCLONE_S3_REMOTE:?RCLONE_S3_REMOTE is required, e.g. s3:google-photos-takeout}"
+: "${RCLONE_S3_REMOTE:?RCLONE_S3_REMOTE is required, e.g. ovh-s3-de:my-bucket}"
 
-SCAN_INTERVAL_SECONDS="${SCAN_INTERVAL_SECONDS:-3600}"
+SCAN_INTERVAL_SECONDS=3600
 RCLONE_TRANSFERS="${RCLONE_TRANSFERS:-2}"
 RCLONE_CHECKERS="${RCLONE_CHECKERS:-4}"
 RCLONE_LOG_LEVEL="${RCLONE_LOG_LEVEL:-INFO}"
