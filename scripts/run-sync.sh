@@ -1,0 +1,54 @@
+#!/bin/sh
+set -eu
+
+# Required environment variables:
+# - RCLONE_DRIVE_REMOTE (example: gdrive:Takeout)
+# - RCLONE_S3_REMOTE (example: s3:my-bucket)
+
+# Optional:
+# - RCLONE_TRANSFERS (default: 2)
+# - RCLONE_CHECKERS (default: 4)
+# - RCLONE_LOG_LEVEL (default: INFO)
+# - RCLONE_S3_STORAGE_CLASS (default: STANDARD_IA)
+# - RCLONE_ADDITIONAL_ARGS (extra flags passed to rclone)
+
+: "${RCLONE_DRIVE_REMOTE:?RCLONE_DRIVE_REMOTE is required, e.g. gdrive:Takeout}"
+: "${RCLONE_S3_REMOTE:?RCLONE_S3_REMOTE is required, e.g. s3:my-bucket}"
+
+SCAN_INTERVAL_SECONDS=3600
+RCLONE_TRANSFERS="${RCLONE_TRANSFERS:-2}"
+RCLONE_CHECKERS="${RCLONE_CHECKERS:-4}"
+RCLONE_LOG_LEVEL="${RCLONE_LOG_LEVEL:-INFO}"
+RCLONE_S3_STORAGE_CLASS="${RCLONE_S3_STORAGE_CLASS:-STANDARD_IA}"
+RCLONE_ADDITIONAL_ARGS="${RCLONE_ADDITIONAL_ARGS:-}"
+
+sync_once() {
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting sync pass"
+
+  # move = copy + delete source only after successful upload
+  # --include 'takeout-*-[0-9][0-9][0-9].zip' targets Takeout chunk files 001+ (e.g. 001-051)
+  # --s3-storage-class is configurable via RCLONE_S3_STORAGE_CLASS (default STANDARD_IA)
+  # transfer is streamed via rclone; no large local staging required
+  # --drive-stop-on-upload-limit avoids partial behavior if quota is hit
+  rclone move "$RCLONE_DRIVE_REMOTE" "$RCLONE_S3_REMOTE" \
+    --include 'takeout-*-[0-9][0-9][0-9].zip' \
+    --s3-storage-class "$RCLONE_S3_STORAGE_CLASS" \
+    --transfers "$RCLONE_TRANSFERS" \
+    --checkers "$RCLONE_CHECKERS" \
+    --drive-stop-on-upload-limit \
+    --log-level "$RCLONE_LOG_LEVEL" \
+    --log-format "date,time" \
+    --stats 30s \
+    $RCLONE_ADDITIONAL_ARGS
+
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass completed"
+}
+
+while true; do
+  if ! sync_once; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass failed; retrying after interval" >&2
+  fi
+
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sleeping for ${SCAN_INTERVAL_SECONDS}s"
+  sleep "$SCAN_INTERVAL_SECONDS"
+done

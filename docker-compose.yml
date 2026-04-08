@@ -1,0 +1,13 @@
+services:
+  gphotos-takeout:
+    image: ghcr.io/L480/gphotos-takeout:latest
+    user: "1000:1000"
+    restart: unless-stopped
+    environment:
+      RCLONE_DRIVE_REMOTE: gdrive:Takeout
+      RCLONE_S3_REMOTE: s3:my-bucket
+      RCLONE_TRANSFERS: "2"
+      RCLONE_CHECKERS: "4"
+      RCLONE_LOG_LEVEL: INFO
+    volumes:
+      - ./rclone.conf:/config/rclone/rclone.conf:ro
