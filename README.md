@@ -1,6 +1,6 @@
 # gphotos-takeout
 
-Moves Google Takeout archives from Google Drive to S3 object storage, then deletes them from Google Drive after a successful upload.
+This project runs a lightweight, repeatable pipeline for Google Photos Takeout ZIP archives: it scans a Drive folder, streams matching archives directly to S3, and only removes each source file after a successful upload. The sync loop in `scripts/run-sync.sh` executes `rclone move` on a fixed interval (default hourly), filters for `takeout-*-NNN.zip` chunks, and applies configurable transfer/checker/concurrency settings through environment variables. In practice, that means no large local staging, predictable retries on failure, and automated cleanup of completed files from Google Drive.
 
 ## Quick start
 
