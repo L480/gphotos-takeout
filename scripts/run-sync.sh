@@ -23,12 +23,12 @@ sync_once() {
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting sync pass"
 
   # move = copy + delete source only after successful upload
-  # --include 'takeout-*-00?.zip' targets Takeout chunk files 001-009
+  # --include 'takeout-*-[0-9][0-9][0-9].zip' targets Takeout chunk files 001+ (e.g. 001-051)
   # --s3-storage-class STANDARD_IA uploads using infrequent access
   # transfer is streamed via rclone; no large local staging required
   # --drive-stop-on-upload-limit avoids partial behavior if quota is hit
   rclone move "$RCLONE_DRIVE_REMOTE" "$RCLONE_S3_REMOTE" \
-    --include 'takeout-*-00?.zip' \
+    --include 'takeout-*-[0-9][0-9][0-9].zip' \
     --s3-storage-class STANDARD_IA \
     --transfers "$RCLONE_TRANSFERS" \
     --checkers "$RCLONE_CHECKERS" \
