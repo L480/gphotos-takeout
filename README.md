@@ -1,68 +1,70 @@
 # gphotos-takeout
 
-A containerized `rclone` worker that checks Google Drive every hour for new Google Photos Takeout ZIP files, uploads them directly to S3 as **Infrequent Access**, and then deletes the source files from Google Drive after successful transfer.
+Moves Google Photos Takeout ZIP files from your **personal Google Drive** to OVH Object Storage (S3), then deletes each ZIP from Drive after a successful upload.
 
-## Why this fits your requirements
+- Runs every **1 hour** (fixed)
+- Uses `rclone move` (copy + delete source only on success)
+- Uploads with `STANDARD_IA`
 
-- **Personal Google account OAuth**: uses a regular Google Drive OAuth remote (`gdrive`) configured with your personal account token (no service account required).
-- **Fixed hourly scan**: the container runs an infinite loop with a fixed 3600-second sleep interval (1 hour).
-- **Low local disk usage (<=10 GB)**: transfers stream directly from Google Drive to S3 via `rclone`; no large local unzip/staging workflow is used.
-- **Delete after upload**: uses `rclone move` (copy + delete source on success).
-- **S3 infrequent access**: uses `--s3-storage-class STANDARD_IA`.
+## Quick start
 
-## Prerequisites
-
-1. An `rclone.conf` with both remotes configured:
-   - Google Drive remote, named `gdrive:` (personal account OAuth token)
-   - OVHcloud S3 remote, named `ovh-s3-de:`
-2. A destination S3 bucket path (`my-bucket`).
-
-## Sample configuration files
-
-- `rclone.conf.example`: sample remotes for personal Google Drive (`gdrive`) and OVHcloud Object Storage (`ovh-s3-de`) using endpoint `https://s3.de.io.cloud.ovh.net` and region `de`.
-- `docker-compose.yml`: ready-to-run compose service mounting your real `./rclone.conf` and running as a non-root UID/GID (`1000:1000`).
-
-To use:
-
-1. Copy `rclone.conf.example` to `rclone.conf`.
-2. Fill in your personal Google OAuth token and OVHcloud S3 credentials.
-3. Keep the destination as `ovh-s3-de:my-bucket` (or add a subpath).
-4. Start with `docker compose up -d --build`.
-
-## Build locally
+### 1) Create `rclone.conf` with Docker (personal Google account)
 
 ```bash
-docker build -t ghcr.io/L480/gphotos-takeout:latest .
+mkdir -p ./rclone-config
+
+docker run --rm -it \
+  -v "$(pwd)/rclone-config:/config/rclone" \
+  rclone/rclone:latest \
+  config
 ```
 
-## Run
+In the interactive `rclone config` menu:
+
+1. Create remote `gdrive` (type `drive`)
+2. For `client_id` and `client_secret`, press **Enter** to leave empty (this is fine for personal use)
+3. Set scope to `drive`
+4. Complete browser login with your personal Google account
+5. Create remote `ovh-s3-de` (type `s3`, provider `Other`)
+6. Set:
+   - region: `de`
+   - endpoint: `s3.de.io.cloud.ovh.net`
+   - access key / secret key: your OVH credentials
+
+After saving, copy config into this repo:
 
 ```bash
-docker run -d --name gphotos-takeout \
-  --user 1000:1000 \
-  -v $(pwd)/rclone.conf:/config/rclone/rclone.conf:ro \
-  -e RCLONE_DRIVE_REMOTE="gdrive:Takeout" \
-  -e RCLONE_S3_REMOTE="ovh-s3-de:my-bucket" \
-  ghcr.io/L480/gphotos-takeout:latest
+cp ./rclone-config/rclone.conf ./rclone.conf
 ```
 
-## Environment variables
+### 2) Start the worker
 
-- `RCLONE_DRIVE_REMOTE` (required): source path in Google Drive remote (e.g. `gdrive:Takeout`)
-- `RCLONE_S3_REMOTE` (required): destination path in S3 remote (e.g. `ovh-s3-de:my-bucket`)
-- `RCLONE_TRANSFERS` (optional, default `2`)
-- `RCLONE_CHECKERS` (optional, default `4`)
-- `RCLONE_LOG_LEVEL` (optional, default `INFO`)
-- `RCLONE_ADDITIONAL_ARGS` (optional): extra flags appended to `rclone move`
+```bash
+docker compose up -d --build
+```
 
-## GitHub Actions: build to GHCR
+Default destination is:
 
-This repo includes `.github/workflows/build-image.yml` which:
+- `ovh-s3-de:my-bucket`
 
-- Builds on pushes to `main`, on version tags (`v*`), and manual dispatch.
-- Logs into `ghcr.io` using `GITHUB_TOKEN`.
-- Publishes tags including branch, tag, sha, and `latest` on default branch.
+Default source is:
 
-The image is published as:
+- `gdrive:Takeout`
 
-- `ghcr.io/L480/gphotos-takeout:<tag>`
+## What gets deleted from Google Drive?
+
+The worker uses:
+
+```bash
+rclone move gdrive:Takeout ovh-s3-de:my-bucket --include '*.zip'
+```
+
+So ZIP files are deleted from Drive **only after** each file upload succeeds.
+
+## Main env vars
+
+- `RCLONE_DRIVE_REMOTE` (default in compose: `gdrive:Takeout`)
+- `RCLONE_S3_REMOTE` (default in compose: `ovh-s3-de:my-bucket`)
+- `RCLONE_TRANSFERS` (default `2`)
+- `RCLONE_CHECKERS` (default `4`)
+- `RCLONE_LOG_LEVEL` (default `INFO`)
