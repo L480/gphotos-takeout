@@ -28,3 +28,8 @@ docker compose up -d
 ```
 
 By default this reads from `gdrive:Takeout` (the `Takeout` folder in Drive) and writes to `ovh-s3-de:my-bucket`.
+
+
+Optional env override:
+
+- `RCLONE_S3_STORAGE_CLASS` (default `STANDARD_IA`)

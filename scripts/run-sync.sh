@@ -8,6 +8,7 @@ set -eu
 # - RCLONE_TRANSFERS (default: 2)
 # - RCLONE_CHECKERS (default: 4)
 # - RCLONE_LOG_LEVEL (default: INFO)
+# - RCLONE_S3_STORAGE_CLASS (default: STANDARD_IA)
 # - RCLONE_ADDITIONAL_ARGS (extra flags passed to rclone)
 
 : "${RCLONE_DRIVE_REMOTE:?RCLONE_DRIVE_REMOTE is required, e.g. gdrive:Takeout}"
@@ -17,6 +18,7 @@ SCAN_INTERVAL_SECONDS=3600
 RCLONE_TRANSFERS="${RCLONE_TRANSFERS:-2}"
 RCLONE_CHECKERS="${RCLONE_CHECKERS:-4}"
 RCLONE_LOG_LEVEL="${RCLONE_LOG_LEVEL:-INFO}"
+RCLONE_S3_STORAGE_CLASS="${RCLONE_S3_STORAGE_CLASS:-STANDARD_IA}"
 RCLONE_ADDITIONAL_ARGS="${RCLONE_ADDITIONAL_ARGS:-}"
 
 sync_once() {
@@ -24,12 +26,12 @@ sync_once() {
 
   # move = copy + delete source only after successful upload
   # --include 'takeout-*-[0-9][0-9][0-9].zip' targets Takeout chunk files 001+ (e.g. 001-051)
-  # --s3-storage-class STANDARD_IA uploads using infrequent access
+  # --s3-storage-class is configurable via RCLONE_S3_STORAGE_CLASS (default STANDARD_IA)
   # transfer is streamed via rclone; no large local staging required
   # --drive-stop-on-upload-limit avoids partial behavior if quota is hit
   rclone move "$RCLONE_DRIVE_REMOTE" "$RCLONE_S3_REMOTE" \
     --include 'takeout-*-[0-9][0-9][0-9].zip' \
-    --s3-storage-class STANDARD_IA \
+    --s3-storage-class "$RCLONE_S3_STORAGE_CLASS" \
     --transfers "$RCLONE_TRANSFERS" \
     --checkers "$RCLONE_CHECKERS" \
     --drive-stop-on-upload-limit \
