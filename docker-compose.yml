@@ -1,6 +1,6 @@
 services:
   gphotos-takeout:
-    image: ghcr.io/L480/gphotos-takeout:latest
+    image: ghcr.io/l480/gphotos-takeout:latest
     user: "1000:1000"
     restart: unless-stopped
     environment:
