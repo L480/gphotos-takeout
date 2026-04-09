@@ -8,7 +8,7 @@ This project runs a lightweight, repeatable pipeline for Google Photos Takeout Z
 
 ```bash
 docker run --rm -it \
-  -v "$(pwd):/work" \
+  -v "$(pwd):/config/rclone" \
   -w /work \
   rclone/rclone:latest \
   config
