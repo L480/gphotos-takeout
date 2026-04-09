@@ -18,7 +18,7 @@ Create these remotes in the menu:
 - `gdrive` (type `drive`, scope `drive`, login with your personal Google account)
 - `s3` (type `s3`, provider `Other`, add your S3 details)
 
-Change file permissions:
+Change rclone.conf file permissions:
 
 ```bash
 chown 1000:1000 rclone.conf
@@ -26,8 +26,14 @@ chown 1000:1000 rclone.conf
 
 ### 2) Run
 
+Change bucket name in [docker-compose.yml](https://github.com/L480/gphotos-takeout/blob/main/docker-compose.yml#L10):
+
+```bash
+nano docker-compose.yml
+```
+
+Start container:
+
 ```bash
 docker compose up -d
 ```
-
-By default this reads from `gdrive:Takeout` (the `Takeout` folder in Drive) and writes to `s3:my-bucket` (can be modified in docker-compose.yml).
