@@ -9,7 +9,6 @@ This project runs a lightweight, repeatable pipeline for Google Photos Takeout Z
 ```bash
 docker run --rm -it \
   -v "$(pwd):/config/rclone" \
-  -w /work \
   rclone/rclone:latest \
   config
 ```
@@ -18,6 +17,12 @@ Create these remotes in the menu:
 
 - `gdrive` (type `drive`, scope `drive`, login with your personal Google account)
 - `s3` (type `s3`, provider `Other`, add your S3 details)
+
+Change file permissions:
+
+```bash
+chown 1000:1000 rclone.conf
+```
 
 ### 2) Run
 
