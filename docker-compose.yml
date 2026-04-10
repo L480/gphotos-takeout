@@ -12,4 +12,4 @@ services:
       RCLONE_CHECKERS: "2"
       RCLONE_LOG_LEVEL: INFO
     volumes:
-      - ./rclone.conf:/config/rclone/rclone.conf:ro
+      - /opt/gphotos-takeout:/config/rclone
