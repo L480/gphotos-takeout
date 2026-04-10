@@ -49,11 +49,11 @@ docker compose up -d
 
 ### ✅ [Strato VC 1-1 (1 EUR/month)](https://www.strato.de/server/linux-vserver/)
 
-#### Upload Speed with  `RCLONE_TRANSFERS=1`
+#### Upload Speed with  `RCLONE_TRANSFERS=1`: 38.7 Mbit/s average
 
 ![Upload Speed RCLONE_TRANSFERS=1](./images/image1.png)
 
-#### Upload Speed with `RCLONE_TRANSFERS=2`
+#### Upload Speed with `RCLONE_TRANSFERS=2`: 86.3 Mbit/s average
 
 > [!CAUTION]
 > I received multiple `Error 403: Quota exceeded for quota metric 'Queries' and limit 'Queries per minute' of service 'drive.googleapis.com' for consumer 'project_number:XXX'` errors with `RCLONE_TRANSFERS=2`.
