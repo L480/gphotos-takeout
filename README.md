@@ -41,4 +41,16 @@ docker compose up -d
 
 ## Tested VPS Offerings
 
-- ✅ [Strato VC 1-1 (1 EUR/month)](https://www.strato.de/server/linux-vserver/)
+### ✅ [Strato VC 1-1 (1 EUR/month)](https://www.strato.de/server/linux-vserver/)
+
+#### Upload Speed with  `RCLONE_TRANSFERS=1`
+
+![Upload Speed 1 transfer](./images/image1.png)
+
+#### Upload Speed with `RCLONE_TRANSFERS=2`
+
+> [!CAUTION]
+> I received multiple `Error 403: Quota exceeded for quota metric 'Queries' and limit 'Queries per minute' of service 'drive.googleapis.com' for consumer 'project_number:XXX'` errors with `RCLONE_TRANSFERS=2`.
+
+
+![Upload Speed 1 transfer](./images/image2.png)
