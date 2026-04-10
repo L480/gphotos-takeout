@@ -4,7 +4,13 @@ This project runs a lightweight, repeatable pipeline for Google Photos Takeout Z
 
 ## Quick start
 
-### 1. Generate `rclone.conf`
+### 1. Set up Google Takeout
+
+Set up Google Takeout via https://takeout.google.com/.
+
+![Google Takeout Setup](./images/image3.png)
+
+### 2. Generate `rclone.conf`
 
 ```bash
 mkdir /opt/gphotos-takeout && cd /opt/gphotos-takeout
@@ -25,7 +31,7 @@ Change folder permissions:
 chown -R 1000:1000 /opt/gphotos-takeout
 ```
 
-### 2. Run
+### 3. Run
 
 Change bucket name in [docker-compose.yml](./docker-compose.yml#L10):
 
@@ -45,7 +51,7 @@ docker compose up -d
 
 #### Upload Speed with  `RCLONE_TRANSFERS=1`
 
-![Upload Speed 1 transfer](./images/image1.png)
+![Upload Speed RCLONE_TRANSFERS=1](./images/image1.png)
 
 #### Upload Speed with `RCLONE_TRANSFERS=2`
 
@@ -53,4 +59,4 @@ docker compose up -d
 > I received multiple `Error 403: Quota exceeded for quota metric 'Queries' and limit 'Queries per minute' of service 'drive.googleapis.com' for consumer 'project_number:XXX'` errors with `RCLONE_TRANSFERS=2`.
 
 
-![Upload Speed 1 transfer](./images/image2.png)
+![Upload Speed RCLONE_TRANSFERS=2](./images/image2.png)
