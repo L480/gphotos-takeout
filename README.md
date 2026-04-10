@@ -1,4 +1,4 @@
-# gphotos-takeout
+# 📦 Google Photos Takeout
 
 This project runs a lightweight, repeatable pipeline for Google Photos Takeout ZIP archives: it scans a Drive folder, streams matching archives directly to S3, and only removes each source file after a successful upload. The sync loop in `scripts/run-sync.sh` executes `rclone move` on a fixed interval (default hourly), filters for `takeout-*-NNN.zip` chunks, and applies configurable transfer/checker/concurrency settings through environment variables. In practice, that means no large local staging, predictable retries on failure, and automated cleanup of completed files from Google Drive.
 
@@ -51,14 +51,13 @@ docker compose up -d
 
 ![Strato VC 1-1 Offering](./images/image4.png)
 
-#### Upload Speed with  `RCLONE_TRANSFERS=1`: 38.7 Mbit/s average
+#### Upload Speed with  `RCLONE_TRANSFERS=1`: 38.7 Mbit/s Average
 
 ![Upload Speed RCLONE_TRANSFERS=1](./images/image1.png)
 
-#### Upload Speed with `RCLONE_TRANSFERS=2`: 86.3 Mbit/s average
+#### Upload Speed with `RCLONE_TRANSFERS=2`: 86.3 Mbit/s Average
 
 > [!CAUTION]
 > I received multiple `Error 403: Quota exceeded for quota metric 'Queries' and limit 'Queries per minute' of service 'drive.googleapis.com' for consumer 'project_number:XXX'` errors with `RCLONE_TRANSFERS=2`.
-
 
 ![Upload Speed RCLONE_TRANSFERS=2](./images/image2.png)
