@@ -49,6 +49,8 @@ docker compose up -d
 
 ### ✅ [Strato VC 1-1 (1 EUR/month)](https://www.strato.de/server/linux-vserver/)
 
+![Strato VC 1-1 Offering](./images/image4.png)
+
 #### Upload Speed with  `RCLONE_TRANSFERS=1`: 38.7 Mbit/s average
 
 ![Upload Speed RCLONE_TRANSFERS=1](./images/image1.png)
