@@ -22,14 +22,13 @@ RCLONE_LOG_LEVEL="${RCLONE_LOG_LEVEL:-INFO}"
 RCLONE_S3_STORAGE_CLASS="${RCLONE_S3_STORAGE_CLASS:-STANDARD_IA}"
 RCLONE_ADDITIONAL_ARGS="${RCLONE_ADDITIONAL_ARGS:-}"
 
-sync_once() {
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting sync pass"
-
+run_rclone() {
   # move = copy + delete source only after successful upload
   # --include 'takeout-*-[0-9][0-9][0-9].zip' targets Takeout chunk files 001+ (e.g. 001-051)
   # --s3-storage-class is configurable via RCLONE_S3_STORAGE_CLASS (default STANDARD_IA)
   # transfer is streamed via rclone; no large local staging required
   # --drive-stop-on-upload-limit avoids partial behavior if quota is hit
+  _rc=0
   rclone move "$RCLONE_DRIVE_REMOTE" "$RCLONE_S3_REMOTE" \
     --include 'takeout-*-[0-9][0-9][0-9].zip' \
     --s3-storage-class "$RCLONE_S3_STORAGE_CLASS" \
@@ -39,14 +38,20 @@ sync_once() {
     --log-level "$RCLONE_LOG_LEVEL" \
     --log-format "date,time" \
     --stats 30s \
-    $RCLONE_ADDITIONAL_ARGS
-
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass completed"
+    $RCLONE_ADDITIONAL_ARGS || _rc=$?
+  return "$_rc"
 }
 
 while true; do
-  if ! sync_once; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass failed; retrying after interval" >&2
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting sync pass"
+
+  rc=0
+  run_rclone || rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass completed"
+  else
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass failed with rclone exit code $rc; retrying after interval" >&2
   fi
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sleeping for ${SCAN_INTERVAL_SECONDS}s"
