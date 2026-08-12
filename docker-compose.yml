@@ -8,8 +8,27 @@ services:
     environment:
       RCLONE_DRIVE_REMOTE: gdrive:Takeout
       RCLONE_S3_REMOTE: s3:my-bucket
+      # Raise to "2" once you have your own client_id (see README step 2).
+      # Measured on a Strato VC 1-1: 38.7 Mbit/s at 1, 86.3 Mbit/s at 2.
       RCLONE_TRANSFERS: "1"
       RCLONE_CHECKERS: "2"
       RCLONE_LOG_LEVEL: INFO
+      #
+      # --- Google Drive API quota protection (defaults shown) ---
+      # RCLONE_MULTI_THREAD_STREAMS: "1"
+      # RCLONE_DRIVE_PACER_MIN_SLEEP: "1s"
+      # RCLONE_DRIVE_PACER_BURST: "10"
+      # RCLONE_TPSLIMIT: "10"
+      # RCLONE_TPSLIMIT_BURST: "20"
+      # RCLONE_RETRIES: "5"
+      # RCLONE_RETRIES_SLEEP: "60s"
+      # RCLONE_LOW_LEVEL_RETRIES: "20"
+      # RCLONE_DRIVE_STOP_ON_DOWNLOAD_LIMIT: "true"
+      #
+      # --- Sync loop (defaults shown) ---
+      # SCAN_INTERVAL_SECONDS: "3600"
+      # BACKOFF_MAX_SECONDS: "21600"
+      # BACKOFF_MULTIPLIER: "2"
+      # BACKOFF_JITTER_PERCENT: "10"
     volumes:
       - /opt/gphotos-takeout:/config/rclone
