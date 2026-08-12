@@ -147,7 +147,7 @@ run_rclone() {
     --retries "$RCLONE_RETRIES" \
     --retries-sleep "$RCLONE_RETRIES_SLEEP" \
     --log-level "$RCLONE_LOG_LEVEL" \
-    --log-format "date,time" \
+    --log-format "date,time,UTC" \
     --stats "$RCLONE_STATS" \
     $extra_flags $RCLONE_ADDITIONAL_ARGS || _rc=$?
   return "$_rc"
@@ -159,7 +159,7 @@ next_sleep=$SCAN_INTERVAL_SECONDS
 consecutive_failures=0
 
 while true; do
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting sync pass"
+  log INFO "Starting sync pass"
 
   rc=0
   run_rclone || rc=$?
@@ -169,23 +169,23 @@ while true; do
   # --error-on-no-transfer, which we do not set, so an idle pass is 0).
   case "$rc" in
     0|9)
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass completed"
+      log INFO "Sync pass completed"
       consecutive_failures=0
       next_sleep=$SCAN_INTERVAL_SECONDS
       ;;
     1|3)
       consecutive_failures=$(( consecutive_failures + 1 ))
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] rclone exit $rc (usage or config error) - this will NOT self-heal; check rclone.conf and the remote names" >&2
+      log ERROR "rclone exit $rc (usage or config error) - this will NOT self-heal; check rclone.conf and the remote names"
       next_sleep=$BACKOFF_MAX_SECONDS
       ;;
     7|8)
       consecutive_failures=$(( consecutive_failures + 1 ))
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] rclone exit $rc (fatal error or transfer limit reached); backing off to maximum" >&2
+      log ERROR "rclone exit $rc (fatal error or transfer limit reached); backing off to maximum"
       next_sleep=$BACKOFF_MAX_SECONDS
       ;;
     *)
       consecutive_failures=$(( consecutive_failures + 1 ))
-      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sync pass failed with rclone exit code $rc (consecutive failures: $consecutive_failures)" >&2
+      log ERROR "Sync pass failed with rclone exit code $rc (consecutive failures: $consecutive_failures)"
       if [ "$consecutive_failures" -gt 1 ]; then
         next_sleep=$(( next_sleep * BACKOFF_MULTIPLIER ))
       fi
@@ -196,6 +196,6 @@ while true; do
   esac
 
   sleep_for=$(apply_jitter "$next_sleep" "$BACKOFF_JITTER_PERCENT")
-  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Sleeping for ${sleep_for}s"
+  log INFO "Sleeping for ${sleep_for}s"
   interruptible_sleep "$sleep_for"
 done
