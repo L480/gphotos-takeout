@@ -22,6 +22,31 @@ RCLONE_LOG_LEVEL="${RCLONE_LOG_LEVEL:-INFO}"
 RCLONE_S3_STORAGE_CLASS="${RCLONE_S3_STORAGE_CLASS:-STANDARD_IA}"
 RCLONE_ADDITIONAL_ARGS="${RCLONE_ADDITIONAL_ARGS:-}"
 
+# Logs to stderr with an rclone-like "date time LEVEL : message" shape, so a
+# single log pipeline can parse both wrapper and rclone lines.
+log() {
+  _level=$1
+  shift
+  printf '%s %-6s: %s\n' "$(date -u '+%Y/%m/%d %H:%M:%S')" "$_level" "$*" >&2
+}
+
+# Advisory only: warns if the Drive remote is still using rclone's built-in
+# shared client_id, whose "Queries per minute" quota is pooled across every
+# rclone user who never created their own OAuth client (see README step 2).
+# Never blocks startup.
+check_client_id() {
+  _remote=${RCLONE_DRIVE_REMOTE%%:*}
+  if rclone config show "$_remote" 2>/dev/null | grep -q '^client_id *= *[^ ]'; then
+    return 0
+  fi
+  log ERROR "The '$_remote' remote has no client_id: rclone's built-in SHARED"
+  log ERROR "Google credentials (project_number:202264815644) are in use. Their"
+  log ERROR "'Queries per minute' quota is shared with every other rclone user,"
+  log ERROR "which causes 403 quota errors even at RCLONE_TRANSFERS=1."
+  log ERROR "This shared client is ALSO being retired during 2026 and will stop"
+  log ERROR "working. See step 2 in the README to create your own client_id."
+}
+
 run_rclone() {
   # move = copy + delete source only after successful upload
   # --include 'takeout-*-[0-9][0-9][0-9].zip' targets Takeout chunk files 001+ (e.g. 001-051)
@@ -41,6 +66,8 @@ run_rclone() {
     $RCLONE_ADDITIONAL_ARGS || _rc=$?
   return "$_rc"
 }
+
+check_client_id || true
 
 while true; do
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] Starting sync pass"
