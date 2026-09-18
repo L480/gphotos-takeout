@@ -1,6 +1,6 @@
 # 📦 Google Photos Takeout
 
-This project runs a lightweight, repeatable pipeline for Google Photos Takeout ZIP archives: it scans a Drive folder, streams matching archives directly to S3, and only removes each source file after the upload has been verified by checksum. The sync loop in `scripts/run-sync.sh` runs a copy → verify → delete pass on a fixed interval (default hourly), filters for `takeout-*-NNN.zip` chunks, and applies configurable transfer/checker/concurrency settings through environment variables. In practice, that means no large local staging, predictable retries on failure, and automated cleanup of completed files from Google Drive.
+This project runs a lightweight, repeatable pipeline for Google Photos Takeout ZIP archives: it scans a Drive folder, streams matching archives directly to S3, and only removes each source file after the upload has been verified by checksum. The sync loop in `scripts/run-sync.sh` runs a copy → verify → delete pass on a fixed interval (default hourly), filters for `takeout-*-<n>.zip` chunks, and applies configurable transfer/checker/concurrency settings through environment variables. In practice, that means no large local staging, predictable retries on failure, and automated cleanup of completed files from Google Drive.
 
 ## Quick start
 
@@ -71,6 +71,31 @@ The pipeline works around this: rclone writes the source MD5 to the
 reads it back for a real hash comparison. This is also why
 `--s3-disable-checksum` must never be added to `RCLONE_ADDITIONAL_ARGS`.
 
+### Which files are picked up
+
+The chunk filter is an rclone regexp rather than a glob:
+
+```
+{{takeout-[^/]*-[0-9]+\.zip}}
+```
+
+The previous `takeout-*-[0-9][0-9][0-9].zip` glob required exactly three
+digits. Google does not always zero-pad that far: a small export produces
+`takeout-<timestamp>-1.zip`, and an export past 999 parts needs four digits.
+Those files matched nothing, so they were never uploaded and never deleted,
+with nothing in the log to say they had been skipped.
+
+Two details of the pattern are deliberate:
+
+- **No `^` or `$`.** For a path pattern without a leading slash, rclone wraps
+  the rule as `(^|/)(<regexp>)$` itself. Adding anchors yields
+  `(^|/)(^...$)$`, which stops matching anything inside a subdirectory.
+- **`[^/]*`, not `.*`.** A glob `*` does not cross directory boundaries, but a
+  regexp `.*` does: `takeout-x/evil-001.zip` would match.
+
+Override with `TAKEOUT_FILTER` to sync something else, e.g.
+`{{takeout-[^/]*-[0-9]+\.tgz}}` for tar.gz exports.
+
 ### Verification modes
 
 `VERIFY_MODE` selects how phase 2 compares the two sides:
@@ -117,11 +142,22 @@ the MD5 of every matched file back from S3 and drops any file that has none, so
 a source file is never deleted on the strength of a comparison that did not
 happen. The log says so explicitly when it triggers.
 
+> **Upgrading an existing deployment:** that guard changes behaviour on a loop
+> that is already running. If the bucket does not return MD5s for multipart
+> objects, nothing will be deleted from Drive any more, and Drive will fill up
+> until new Takeout exports start failing. This is the safe direction to fail,
+> but it is not a silent one: run the preflight check before deploying, and
+> switch to `VERIFY_MODE=download` if it reports no MD5.
+
 **OVHcloud specifics:**
 
-- `STANDARD_IA` does not exist there. OVHcloud offers `STANDARD` and
-  `EXPRESS_ONEZONE` (which maps to the High Performance class), which is why
-  the default here is `STANDARD`.
+- `STANDARD_IA` is not an OVHcloud storage class. OVHcloud offers `STANDARD`
+  and `EXPRESS_ONEZONE` (which maps to the High Performance class). rclone
+  sends `x-amz-storage-class` regardless of provider, and OVHcloud is lenient
+  about the unknown value rather than rejecting the upload, so the old default
+  did work; it just did not mean anything. The default is now `STANDARD` so
+  that the request says what is actually being stored. Set
+  `RCLONE_S3_STORAGE_CLASS` explicitly if you want something else.
 - rclone has no dedicated `OVHcloud` provider before 1.70, and the image pins
   1.69, so `provider = Other` is correct. That setting also sets
   `useMultipartEtag = false`, meaning rclone relies on the metadata hash rather
@@ -140,7 +176,8 @@ the first place — verify the ZIPs themselves before relying on the backup.
 | `DELETE_AFTER_VERIFY` | `true` | Set to `false` to keep every source file in Drive (dry run for the delete phase) |
 | `WRITE_MANIFEST` | `true` | Write and upload the per-pass checksum manifest |
 | `MANIFEST_PREFIX` | `_manifests` | Bucket prefix the manifests are stored under |
-| `RCLONE_S3_STORAGE_CLASS` | `STANDARD` | Storage class. `STANDARD_IA` is AWS-only and is rejected by some providers |
+| `TAKEOUT_FILTER` | `{{takeout-[^/]*-[0-9]+\.zip}}` | rclone `--include` pattern selecting the chunks to sync |
+| `RCLONE_S3_STORAGE_CLASS` | `STANDARD` | Storage class. `STANDARD_IA` is AWS-only and is meaningless on providers that do not define it |
 
 ## Tested VPS Offerings
 

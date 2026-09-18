@@ -17,6 +17,7 @@ set -euf
 # - DELETE_AFTER_VERIFY (true | false, default: true)
 # - WRITE_MANIFEST (true | false, default: true)
 # - MANIFEST_PREFIX (default: _manifests)
+# - TAKEOUT_FILTER (rclone --include pattern; default matches takeout-*-<n>.zip)
 
 : "${RCLONE_DRIVE_REMOTE:?RCLONE_DRIVE_REMOTE is required, e.g. gdrive:Takeout}"
 : "${RCLONE_S3_REMOTE:?RCLONE_S3_REMOTE is required, e.g. s3:my-bucket}"
@@ -57,8 +58,24 @@ require_bool() {
 require_bool DELETE_AFTER_VERIFY "$DELETE_AFTER_VERIFY"
 require_bool WRITE_MANIFEST "$WRITE_MANIFEST"
 
-# Takeout chunk files: takeout-<timestamp>-001.zip ... takeout-<timestamp>-NNN.zip
-TAKEOUT_FILTER='takeout-*-[0-9][0-9][0-9].zip'
+# Takeout chunk files: takeout-<timestamp>-<n>.zip
+#
+# The chunk number is not always zero-padded to three digits: small exports
+# produce takeout-<timestamp>-1.zip, and exports past 999 parts need four.
+# A [0-9][0-9][0-9] glob silently ignores those, so they would never be
+# uploaded and never be deleted, with nothing in the log to say so.
+#
+# rclone supports regexps inside {{ }}. Deliberately left unanchored: for a
+# path pattern without a leading slash rclone wraps the rule as
+# (^|/)(<regexp>)$ itself, so adding ^ or $ here produces (^|/)(^...$)$ and
+# stops matching anything in a subdirectory. [^/]* rather than .* for the
+# same reason a glob '*' does not cross directories: .* would let
+# "takeout-x/evil-001.zip" through.
+# Kept out of the ${VAR:-default} form on purpose: that expansion ends at the
+# first '}', so a default containing '}}' leaks the remainder as a literal and
+# an overridden value comes out with four closing braces.
+DEFAULT_TAKEOUT_FILTER='{{takeout-[^/]*-[0-9]+\.zip}}'
+TAKEOUT_FILTER="${TAKEOUT_FILTER:-$DEFAULT_TAKEOUT_FILTER}"
 
 # Flags shared by every rclone command that walks the takeout chunks.
 COMMON_ARGS="--include $TAKEOUT_FILTER --transfers $RCLONE_TRANSFERS --checkers $RCLONE_CHECKERS --log-level $RCLONE_LOG_LEVEL --log-format date,time --stats 30s"
