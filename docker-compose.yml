@@ -11,5 +11,11 @@ services:
       RCLONE_TRANSFERS: "2"
       RCLONE_CHECKERS: "2"
       RCLONE_LOG_LEVEL: INFO
+      # Verify every upload by checksum before the source is deleted from Drive.
+      # Use "download" to re-read and hash both sides (costs egress), or "size"
+      # only for S3 providers that drop user metadata on multipart uploads.
+      VERIFY_MODE: checksum
+      DELETE_AFTER_VERIFY: "true"
+      WRITE_MANIFEST: "true"
     volumes:
       - /opt/gphotos-takeout:/config/rclone
