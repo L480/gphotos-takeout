@@ -14,6 +14,9 @@ services:
       # Verify every upload by checksum before the source is deleted from Drive.
       # Use "download" to re-read and hash both sides (costs egress), or "size"
       # only for S3 providers that drop user metadata on multipart uploads.
+      # Run scripts/preflight-check.sh once before enabling this against a new
+      # bucket: on a provider that drops multipart metadata, rclone reports
+      # unhashable files as matches and "checksum" would verify nothing.
       VERIFY_MODE: checksum
       DELETE_AFTER_VERIFY: "true"
       WRITE_MANIFEST: "true"

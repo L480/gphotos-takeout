@@ -11,7 +11,7 @@ set -euf
 # - RCLONE_TRANSFERS (default: 2)
 # - RCLONE_CHECKERS (default: 4)
 # - RCLONE_LOG_LEVEL (default: INFO)
-# - RCLONE_S3_STORAGE_CLASS (default: STANDARD_IA)
+# - RCLONE_S3_STORAGE_CLASS (default: STANDARD)
 # - RCLONE_ADDITIONAL_ARGS (extra flags passed to rclone)
 # - VERIFY_MODE (checksum | download | size, default: checksum)
 # - DELETE_AFTER_VERIFY (true | false, default: true)
@@ -25,7 +25,7 @@ SCAN_INTERVAL_SECONDS=3600
 RCLONE_TRANSFERS="${RCLONE_TRANSFERS:-2}"
 RCLONE_CHECKERS="${RCLONE_CHECKERS:-4}"
 RCLONE_LOG_LEVEL="${RCLONE_LOG_LEVEL:-INFO}"
-RCLONE_S3_STORAGE_CLASS="${RCLONE_S3_STORAGE_CLASS:-STANDARD_IA}"
+RCLONE_S3_STORAGE_CLASS="${RCLONE_S3_STORAGE_CLASS:-STANDARD}"
 RCLONE_ADDITIONAL_ARGS="${RCLONE_ADDITIONAL_ARGS:-}"
 VERIFY_MODE="${VERIFY_MODE:-checksum}"
 DELETE_AFTER_VERIFY="${DELETE_AFTER_VERIFY:-true}"
@@ -143,6 +143,59 @@ verify_phase() {
   report_failures "$differ" "Checksum mismatch, source kept for retry:"
   report_failures "$missing" "Not present in S3, source kept for retry:"
   report_failures "$errors" "Could not be compared, source kept for retry:"
+
+  enforce_hash_gate "$matched"
+}
+
+# rclone check reports a file as MATCHED when it cannot obtain a hash from one
+# of the sides: checkHashes() returns equal=true with hash.None, and the file is
+# counted as a match with only a debug-level "could not check hash" note. On an
+# S3 provider that drops user metadata on multipart uploads, every chunk would
+# therefore be reported as verified without a single byte ever being compared,
+# and the Drive original would be deleted.
+#
+# Guard against that explicitly: ask S3 for the MD5 of every matched file and
+# drop the ones that have none. rclone lsf --format ph prints "path;hash" and
+# leaves the hash field empty when no hash is available, so this needs no JSON
+# parsing. Only meaningful for the metadata-based comparison; --download hashes
+# the transferred bytes itself, and --size-only is an explicit opt-out.
+enforce_hash_gate() {
+  matched="$1"
+
+  if [ "$VERIFY_MODE" != "checksum" ] || [ ! -s "$matched" ]; then
+    return 0
+  fi
+
+  hashes="$WORK_DIR/s3-hashes.csv"
+  gated="$WORK_DIR/gated.txt"
+
+  if ! rclone lsf "$RCLONE_S3_REMOTE" \
+    --files-from "$matched" \
+    --format ph \
+    --hash MD5 \
+    --checkers "$RCLONE_CHECKERS" \
+    --log-level "$RCLONE_LOG_LEVEL" \
+    --log-format date,time >"$hashes"; then
+    log_err "Could not read back MD5 hashes from S3; keeping all sources for retry"
+    : >"$matched"
+    rm -f "$hashes"
+    return 0
+  fi
+
+  # Keep only paths whose hash field is non-empty.
+  awk -F';' 'NF >= 2 && $NF != "" { sub(/;[^;]*$/, ""); print }' "$hashes" >"$gated"
+
+  n_before=$(count_lines "$matched")
+  n_after=$(count_lines "$gated")
+
+  if [ "$n_after" -lt "$n_before" ]; then
+    log_err "$(( n_before - n_after )) of $n_before file(s) reported as verified carry no MD5 in S3."
+    log_err "rclone counts those as matches without comparing anything, so they are NOT deleted."
+    log_err "This provider likely drops x-amz-meta-md5chksum on multipart uploads; use VERIFY_MODE=download."
+  fi
+
+  mv "$gated" "$matched"
+  rm -f "$hashes"
 }
 
 report_failures() {
@@ -239,7 +292,7 @@ sync_once() {
   write_manifest "$matched"
   delete_phase "$matched"
 
-  rm -f "$matched" "$differ" "$missing" "$errors"
+  rm -f "$matched" "$differ" "$missing" "$errors" "$WORK_DIR/s3-hashes.csv" "$WORK_DIR/gated.txt"
 
   log "Sync pass completed"
 }

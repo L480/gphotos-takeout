@@ -93,6 +93,41 @@ later, long after the Drive originals are gone:
 rclone checksum md5 manifest-20260101T120000Z.md5 s3:my-bucket
 ```
 
+### Non-AWS S3 providers
+
+Run the preflight check once before enabling the sync loop against a new
+bucket:
+
+```bash
+RCLONE_S3_REMOTE=s3:my-bucket ./scripts/preflight-check.sh
+```
+
+It uploads a small forced-multipart object, reads the MD5 back, and confirms
+that `rclone check` really compares hashes instead of waving the file through.
+
+This matters because of how rclone reports an unhashable file: when it cannot
+obtain a hash from one side, `checkHashes()` returns *equal* with `hash.None`,
+and the file is counted as a **match**. Only a debug-level counter
+(`N hashes could not be checked`) records that nothing was compared. A provider
+that discards `x-amz-meta-md5chksum` on multipart uploads would therefore make
+every chunk look verified.
+
+The sync loop guards against this independently: after `rclone check`, it reads
+the MD5 of every matched file back from S3 and drops any file that has none, so
+a source file is never deleted on the strength of a comparison that did not
+happen. The log says so explicitly when it triggers.
+
+**OVHcloud specifics:**
+
+- `STANDARD_IA` does not exist there. OVHcloud offers `STANDARD` and
+  `EXPRESS_ONEZONE` (which maps to the High Performance class), which is why
+  the default here is `STANDARD`.
+- rclone has no dedicated `OVHcloud` provider before 1.70, and the image pins
+  1.69, so `provider = Other` is correct. That setting also sets
+  `useMultipartEtag = false`, meaning rclone relies on the metadata hash rather
+  than the ETag, which is the behaviour this pipeline depends on.
+- If the preflight check reports no MD5, use `VERIFY_MODE=download`.
+
 Note that a checksum only proves the bytes in S3 match the bytes Google
 delivered. It cannot detect an archive that Takeout generated incorrectly in
 the first place — verify the ZIPs themselves before relying on the backup.
@@ -105,6 +140,7 @@ the first place — verify the ZIPs themselves before relying on the backup.
 | `DELETE_AFTER_VERIFY` | `true` | Set to `false` to keep every source file in Drive (dry run for the delete phase) |
 | `WRITE_MANIFEST` | `true` | Write and upload the per-pass checksum manifest |
 | `MANIFEST_PREFIX` | `_manifests` | Bucket prefix the manifests are stored under |
+| `RCLONE_S3_STORAGE_CLASS` | `STANDARD` | Storage class. `STANDARD_IA` is AWS-only and is rejected by some providers |
 
 ## Tested VPS Offerings
 
