@@ -44,13 +44,3 @@ Start container:
 ```bash
 docker compose up -d
 ```
-
-## Tested VPS Offerings
-
-### ✅ [Strato VC 1-1 (1 EUR/month)](https://www.strato.de/server/linux-vserver/)
-
-![Strato VC 1-1 Offering](./images/image4.png)
-
-#### Upload Speed with `RCLONE_TRANSFERS=2`: 86.3 Mbit/s Average
-
-![Upload Speed RCLONE_TRANSFERS=2](./images/image2.png)
